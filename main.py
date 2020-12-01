@@ -57,7 +57,7 @@ class Application(QWidget):
         cb_lable = QLabel("Time Gap: ")
         self.time_range_cb = QComboBox()
         # self.time_range_cb.lineEdit().setAlignment
-        self.time_range_cb.addItems([("%d:%02d" % (int(x), (x*60) % 60)) for x in list(float_range(-12, 13, '0.5'))])
+        self.time_range_cb.addItems([("%s%d:%02d" % ("-" if x < 0 else "+",int(abs(x)), (abs(x)*60) % 60)) for x in list(float_range(-12, 13, '0.5'))])
 
         # box for car file and range
         car_file_box = QHBoxLayout()
