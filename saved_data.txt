@@ -1,1 +1,1 @@
-PATH:D:/My Practice/Summit Works/ssb_analysis/test_folder
+PATH:E:/Office/ssb_analysis/SQSRM_LOG

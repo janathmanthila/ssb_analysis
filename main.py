@@ -1,6 +1,8 @@
 import sys
 import decimal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QApplication, QFileDialog, QTextEdit, QLineEdit, QHBoxLayout, QComboBox, QLabel
+from datetime import date, datetime, timedelta
+import time, os
 
 
 def float_range(start, stop, step):
@@ -91,10 +93,42 @@ class Application(QWidget):
         self.setLayout(vbox)
         self.show()
 
+    def get_time_calculated(self):
+        """Gets epoch time with related to given time range"""
+        valid_time = ''
+        current_date = datetime.today()
+        epoch = int(time.mktime(time.strptime(str(current_date), '%Y-%m-%d %H:%M:%S.%f')))  # current datetime to epoch
+        after_converting = datetime.utcfromtimestamp(float(epoch))  # converts epoch time to datetime
+        selected_time_range = self.time_range_cb.currentText()  # selected time range
+        selected_time_range_obj = datetime.strptime(
+            selected_time_range[1:] if selected_time_range[0] == '-' else selected_time_range, '%H:%M')
+        if selected_time_range[0] == '-':
+            valid_time = after_converting - timedelta(hours=selected_time_range_obj.time().hour,
+                                                      minutes=selected_time_range_obj.time().minute)
+        else:
+            valid_time = after_converting + timedelta(hours=selected_time_range_obj.time().hour,
+                                                      minutes=selected_time_range_obj.time().minute)
+        return valid_time
+
+    def read_files(self):
+        """Reads Car and Log files from the directories"""
+        directory = self.read_from_saved_data()
+        for car_file_path in self.car_files:
+            car_file = open(car_file_path, 'r')
+            for line in car_file:
+                for files in os.walk(directory):
+                    for file in files[2]:
+                        log_file = open(directory + '/' + file, 'r')
+                        print(log_file.readline())  # analysis logic comes here
+
+
     def initiate_analysis(self):
         print(self.directory_path.text())
         print(self.car_files)
         print(self.time_range_cb.currentText())
+        print(self.get_time_calculated())
+        self.read_files()
+
 
     def open_file_dialog_btn_click(self):
         path = QFileDialog.getExistingDirectory(None, 'Select Directory for files')
