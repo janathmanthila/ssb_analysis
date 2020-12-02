@@ -100,8 +100,7 @@ class Application(QWidget):
         epoch = int(time.mktime(time.strptime(str(current_date), '%Y-%m-%d %H:%M:%S.%f')))  # current datetime to epoch
         after_converting = datetime.utcfromtimestamp(float(epoch))  # converts epoch time to datetime
         selected_time_range = self.time_range_cb.currentText()  # selected time range
-        selected_time_range_obj = datetime.strptime(
-            selected_time_range[1:] if selected_time_range[0] == '-' else selected_time_range, '%H:%M')
+        selected_time_range_obj = datetime.strptime(selected_time_range[1:], '%H:%M')
         if selected_time_range[0] == '-':
             valid_time = after_converting - timedelta(hours=selected_time_range_obj.time().hour,
                                                       minutes=selected_time_range_obj.time().minute)
@@ -127,7 +126,7 @@ class Application(QWidget):
         print(self.car_files)
         print(self.time_range_cb.currentText())
         print(self.get_time_calculated())
-        self.read_files()
+        # self.read_files()
 
 
     def open_file_dialog_btn_click(self):
