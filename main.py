@@ -1,160 +1,210 @@
 import sys
-import decimal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QApplication, QFileDialog, QTextEdit, QLineEdit, QHBoxLayout, QComboBox, QLabel
+import pandas as pd
+import matplotlib.pyplot  as plt
+from PyQt5.QtWidgets import *
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from datetime import date, datetime, timedelta
 import time, os
+import decimal
 
 
 def float_range(start, stop, step):
-  while start < stop:
-    yield float(start)
-    start += decimal.Decimal(step)
-
-class Application(QWidget):
-
-    def __init__(self):
-        super().__init__()
-        self.title = 'SSB Analyser'
-        self.left = 500
-        self.top = 200
-        self.width = 500
-        self.height = 200
-        self.directory_path = None
-        self.car_files_txt = None
-        self.car_files = []
-        self.open_file_dialog_btn = None
-        self.time_range_cb = None
-        self.initUI()
-
-    def initUI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-
-        # Create textbox
-        current_path = self.read_from_saved_data()
-        self.directory_path = QLineEdit(current_path if current_path else "")
-        self.directory_path.setReadOnly(True)
-        self.directory_path.move(0, 20)
-        self.directory_path.resize(280, 40)
-
-        # Create a button in the window
-        self.open_file_dialog_btn = QPushButton('Set Path', self)
-        self.open_file_dialog_btn.clicked.connect(self.open_file_dialog_btn_click)
-
-        # path and button layout
-        hbox = QHBoxLayout()
-        hbox.addSpacing(50)
-        hbox.addWidget(self.directory_path)
-        hbox.addWidget(self.open_file_dialog_btn)
-        hbox.addSpacing(50)
-
-        # Create carfile display
-        self.car_files_txt = QTextEdit("")
-        self.car_files_txt.setReadOnly(True)
-        # Create car file dialog button in the window
-        open_car_file_dialog_btn = QPushButton('Load Car Files', self)
-        open_car_file_dialog_btn.clicked.connect(self.open_car_file_dialog_btn_click)
-
-        # time range combo box
-        cb_lable = QLabel("Time Gap: ")
-        self.time_range_cb = QComboBox()
-        # self.time_range_cb.lineEdit().setAlignment
-        self.time_range_cb.addItems([("%s%d:%02d" % ("-" if x < 0 else "+",int(abs(x)), (abs(x)*60) % 60)) for x in list(float_range(-12, 13, '0.5'))])
-
-        # box for car file and range
-        car_file_box = QHBoxLayout()
-        car_file_box.addSpacing(50)
-        car_file_box.addWidget(self.car_files_txt)
-        car_file_box.addWidget(open_car_file_dialog_btn)
-        car_file_box.addSpacing(20)
-        car_file_box.addWidget(cb_lable)
-        car_file_box.addWidget(self.time_range_cb)
-        car_file_box.addSpacing(50)
+    while start < stop:
+        yield float(start)
+        start += decimal.Decimal(step)
 
 
-        generate_analysis_btn = QPushButton('Analyse', self)
-        generate_analysis_btn.clicked.connect(self.initiate_analysis)
-        generate_analysis_btn.setGeometry(200, 150, 500, 40)
+class mainApplication(QWidget):
 
-        # Analysis button layout
-        hbox_for_analysis = QHBoxLayout()
-        hbox_for_analysis.addStretch(1)
-        hbox_for_analysis.addWidget(generate_analysis_btn)
-        hbox_for_analysis.addStretch(1)
+    def __init__(self, parent=None):
+        super(mainApplication, self).__init__(parent)
 
+        self.layoutMap = {}
+        self.buttonMap = {}
 
+        # Figure Bottom Left
+        self.leftFigure = plt.figure(figsize=(15, 5))
+        self.leftFigure.set_facecolor('0.915')
+        self.leftComboBox = QComboBox()
+        self.leftCanvas = FigureCanvas(self.leftFigure)
 
-        # main Layout
-        vbox = QVBoxLayout()
-        vbox.addLayout(car_file_box)
-        vbox.addLayout(hbox)
-        vbox.addLayout(hbox_for_analysis)
+        # Figure Bottom Right
+        self.rightFigure = plt.figure(figsize=(15, 5))
+        self.rightFigure.set_facecolor('0.915')
+        self.rightCanvas = FigureCanvas(self.rightFigure)
 
-        self.setLayout(vbox)
-        self.show()
+        # Main Figure
+        #        self.setGeometry(600, 300, 1000, 600)
 
-    def get_time_calculated(self):
-        """Gets epoch time with related to given time range"""
-        valid_time = ''
-        current_date = datetime.today()
-        epoch = int(time.mktime(time.strptime(str(current_date), '%Y-%m-%d %H:%M:%S.%f')))  # current datetime to epoch
-        after_converting = datetime.utcfromtimestamp(float(epoch))  # converts epoch time to datetime
-        selected_time_range = self.time_range_cb.currentText()  # selected time range
-        selected_time_range_obj = datetime.strptime(selected_time_range[1:], '%H:%M')
-        if selected_time_range[0] == '-':
-            valid_time = after_converting - timedelta(hours=selected_time_range_obj.time().hour,
-                                                      minutes=selected_time_range_obj.time().minute)
+        self.topLeft()
+        self.topRight()
+        self.bottomLeft()
+        self.bottomRight()
+
+        self.mainLayout = QGridLayout()
+        self.mainLayout.addWidget(self.topLeftBox, 1, 0)
+        self.mainLayout.addWidget(self.topRightBox, 1, 1)
+        self.mainLayout.addWidget(self.bottomLeftBox, 2, 0)
+        self.mainLayout.addWidget(self.bottomRightBox, 2, 1)
+        self.mainLayout.setRowStretch(1, 1)
+        self.mainLayout.setRowStretch(2, 1)
+        self.mainLayout.setColumnStretch(0, 1)
+        self.mainLayout.setColumnStretch(1, 1)
+        self.saveLayout(self.mainLayout, "main")
+
+        self.setLayout(self.mainLayout)
+
+        self.setWindowTitle("Title")
+        QApplication.setStyle("Fusion")
+
+    #        self.show()
+
+    def bottomLeft(self):
+        self.bottomLeftBox = QGroupBox("First Graph")
+
+        # Create Full Screen Button
+        self.leftFullScreenButton = QPushButton("Full Screen")
+        self.leftFullScreenButton.setMaximumWidth(100)
+        self.leftFullScreenButton.setMaximumHeight(20)
+        self.saveButton(self.leftFullScreenButton)
+        self.leftFullScreenButton.clicked.connect(self.swichFullScreenLeft)
+
+        # Create Layout
+        leftLayout = QVBoxLayout()
+        formLayout = QFormLayout()
+        formLayout.addRow('Car', QComboBox())
+        leftLayout.addLayout(formLayout)
+        leftLayout.addWidget(self.leftCanvas)
+        # layout.addWidget(chooseButton)
+        leftLayout.addWidget(self.leftFullScreenButton)
+        leftLayout.addStretch(1)
+
+        self.saveLayout(leftLayout, "full")
+
+        # Add Layout to GroupBox
+        self.bottomLeftBox.setLayout(leftLayout)
+
+    def bottomRight(self):
+        self.bottomRightBox = QGroupBox("Second Graph")
+
+        # Create Select Button
+        # chooseButton = QPushButton("Select")
+        # chooseButton.setMaximumWidth(100)
+        # chooseButton.setMaximumHeight(20)
+        # self.saveButton(chooseButton)
+        # chooseButton.clicked.connect(self.selectFunction)
+
+        # Create Full Screen Button
+        self.rightFullScreenButton = QPushButton("Full Screen")
+        self.rightFullScreenButton.setMaximumWidth(100)
+        self.rightFullScreenButton.setMaximumHeight(20)
+        self.saveButton(self.rightFullScreenButton)
+        self.rightFullScreenButton.clicked.connect(self.swichFullScreenRight)
+
+        # Create Layout
+        rightLayout = QVBoxLayout()
+        rightLayout.addWidget(self.rightCanvas)
+        # rightLayout.addWidget(chooseButton)
+        rightLayout.addWidget(self.rightFullScreenButton)
+        rightLayout.addStretch(1)
+
+        self.saveLayout(rightLayout, "full")
+
+        # Add Layout to GroupBox
+        self.bottomRightBox.setLayout(rightLayout)
+
+    def selectFunction(self):
+        # Select Data
+        filePath, _ = QFileDialog.getOpenFileName(self, 'Open file', '/Data/')
+        df = pd.read_csv(str(filePath))
+        x = df.x.tolist()
+        y = df.y.tolist()
+
+        # Create Figure
+        self.figure.clf()
+        ax = self.figure.add_subplot(111)
+        ax.plot(x, y)
+        ax.set_facecolor('0.915')
+        ax.set_title('Graphique')
+
+        # Draw Graph
+        self.canvas.draw()
+
+    def saveLayout(self, obj, text):
+        self.layoutMap[text] = obj
+
+    def findLayout(self, text):
+        return self.layoutMap[text]
+
+    def saveButton(self, obj):
+        self.buttonMap[obj.text()] = obj
+
+    def findButton(self, text):
+        return self.buttonMap[text]
+
+    def swichFullScreenLeft(self):
+        if self.sender().text() == "Full Screen":
+            self.topLeftBox.hide()
+            self.topRightBox.hide()
+            self.bottomLeftBox.hide()
+            self.bottomRightBox.hide()
+            self.mainLayout.addWidget(self.bottomLeftBox, 0, 0, 1, 2)
+            self.bottomLeftBox.show()
+            self.leftFullScreenButton.setText("Exit Full Screen")
+
         else:
-            valid_time = after_converting + timedelta(hours=selected_time_range_obj.time().hour,
-                                                      minutes=selected_time_range_obj.time().minute)
-        return valid_time
+            self.bottomLeftBox.hide()
+            self.topLeftBox.show()
+            self.topRightBox.show()
+            self.bottomRightBox.show()
+            self.mainLayout.addWidget(self.bottomLeftBox, 2, 0)
+            self.bottomLeftBox.show()
+            self.leftFullScreenButton.setText("Full Screen")
 
-    def read_files(self):
-        """Reads Car and Log files from the directories"""
-        directory = self.read_from_saved_data()
-        for car_file_path in self.car_files:
-            car_file = open(car_file_path, 'r')
-            for line in car_file:
-                for files in os.walk(directory):
-                    for file in files[2]:
-                        log_file = open(directory + '/' + file, 'r')
-                        print(log_file.readline())  # analysis logic comes here
+    def swichFullScreenRight(self):
+        if self.sender().text() == "Full Screen":
+            self.topLeftBox.hide()
+            self.topRightBox.hide()
+            self.bottomLeftBox.hide()
+            self.bottomRightBox.hide()
+            self.mainLayout.addWidget(self.bottomRightBox, 0, 0, 1, 2)
+            self.bottomRightBox.show()
+            self.rightFullScreenButton.setText("Exit Full Screen")
 
+        else:
+            self.bottomRightBox.hide()
+            self.topLeftBox.show()
+            self.topRightBox.show()
+            self.bottomLeftBox.show()
+            self.mainLayout.addWidget(self.bottomRightBox, 2, 1)
+            self.bottomRightBox.show()
+            self.rightFullScreenButton.setText("Full Screen")
 
-    def initiate_analysis(self):
-        print(self.directory_path.text())
-        print(self.car_files)
-        print(self.time_range_cb.currentText())
-        print(self.get_time_calculated())
-        # self.read_files()
+    def topLeft(self):
+        self.time_range_cb = QComboBox()
+        self.time_range_cb.addItems([("%s%d:%02d" % ("-" if x < 0 else "+", int(abs(x)), (abs(x) * 60) % 60)) for x in
+                                     list(float_range(-12, 13, '0.5'))])
+        self.topLeftBox = QGroupBox()
+        leftLayout = QVBoxLayout()
+        formLayout = QFormLayout()
+        formLayout.addRow('Time Gap:', self.time_range_cb)
+        formLayout.addRow('Directory Path:', QLineEdit())
+        leftLayout.addLayout(formLayout)
+        buttons = QDialogButtonBox()
+        buttons.setStandardButtons(
+            QDialogButtonBox.Cancel | QDialogButtonBox.Apply)
+        leftLayout.addWidget(buttons)
+        self.topLeftBox.setLayout(leftLayout)
 
-
-    def open_file_dialog_btn_click(self):
-        path = QFileDialog.getExistingDirectory(None, 'Select Directory for files')
-        self.directory_path.setText(path)
-        self.write_to_saved_data(path)
-
-    def open_car_file_dialog_btn_click(self):
-        files = QFileDialog.getOpenFileNames(None, 'Select CAR files', "", "CAR files (*.car *.CAR)")
-        self.car_files = files[0]
-        self.car_files_txt.setText("\n".join([x.split("/")[-1] for x in self.car_files]))
-
-    @staticmethod
-    def read_from_saved_data():
-        data_file = open("saved_data.txt", "r")
-        for x in data_file:
-            if "PATH:" in x:
-                return x.split("PATH:", 1)[1]
-
-    @staticmethod
-    def write_to_saved_data(path):
-        data_file = open("saved_data.txt", "w")
-        data_file.write("PATH:" + path)
-        data_file.close()
+    def topRight(self):
+        self.topRightBox = QGroupBox("Selected Car files")
+        rightLayout = QVBoxLayout()
+        self.topRightBox.setLayout(rightLayout)
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    application = Application()
+    mainWindow = mainApplication()
+    mainWindow.setGeometry(200, 100, 1000, 600)
+    mainWindow.show()
     sys.exit(app.exec_())
-
