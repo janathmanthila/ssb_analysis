@@ -19,7 +19,12 @@ class mainApplication(QWidget):
     def __init__(self, parent=None):
         super(mainApplication, self).__init__(parent)
 
-        self.car_files_txt = ""
+        self.directory_path = None
+        self.car_files_txt = None
+        self.car_files = []
+        self.open_file_dialog_btn = None
+        self.time_range_cb = None
+
         self.layoutMap = {}
         self.buttonMap = {}
 
