@@ -184,12 +184,19 @@ class mainApplication(QWidget):
         self.time_range_cb = QComboBox()
         self.time_range_cb.addItems([("%s%d:%02d" % ("-" if x < 0 else "+", int(abs(x)), (abs(x) * 60) % 60)) for x in
                                      list(float_range(-12, 13, '0.5'))])
+
+        self.open_file_dialog_btn = QPushButton('Set Path', self)
+        self.open_file_dialog_btn.clicked.connect(self.open_file_dialog_btn_click)
+
+        self.open_car_file_dialog_btn = QPushButton('Load Car Files', self)
+        self.open_car_file_dialog_btn.clicked.connect(self.open_car_file_dialog_btn_click)
+
         self.topLeftBox = QGroupBox()
         leftLayout = QVBoxLayout()
         formLayout = QFormLayout()
         formLayout.addRow('Time Gap:', self.time_range_cb)
-        formLayout.addRow('Directory Path:', QLineEdit())
-        formLayout.addRow('Select Car Files:', QLineEdit())
+        formLayout.addRow('Directory Path:', self.open_file_dialog_btn)
+        formLayout.addRow('Select Car Files:', self.open_car_file_dialog_btn)
         leftLayout.addLayout(formLayout)
         buttons = QDialogButtonBox()
         buttons.setStandardButtons(
