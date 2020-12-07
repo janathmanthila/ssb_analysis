@@ -19,6 +19,7 @@ class mainApplication(QWidget):
     def __init__(self, parent=None):
         super(mainApplication, self).__init__(parent)
 
+        self.car_files_txt = ""
         self.layoutMap = {}
         self.buttonMap = {}
 
@@ -205,11 +206,7 @@ class mainApplication(QWidget):
         self.topLeftBox.setLayout(leftLayout)
 
     def topRight(self):
-        # Create carfile display
         self.topRightBox = QTextEdit("")
-        rightLayout = QVBoxLayout()
-        rightLayout.addWidget(self.car_files_txt)
-        self.topRightBox.setLayout(rightLayout)
 
     def open_file_dialog_btn_click(self):
         path = QFileDialog.getExistingDirectory(None, 'Select Directory for files')
