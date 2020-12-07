@@ -205,7 +205,10 @@ class mainApplication(QWidget):
         self.topLeftBox.setLayout(leftLayout)
 
     def topRight(self):
-        self.topRightBox = QTextEdit()
+        self.topRightBox = QGroupBox()
+        layout = leftLayout = QVBoxLayout()
+        formLayout = QFormLayout()
+        formLayout.addWidget(self.car_files_txt)
 
     def open_file_dialog_btn_click(self):
         path = QFileDialog.getExistingDirectory(None, 'Select Directory for files')
