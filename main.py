@@ -189,8 +189,7 @@ class mainApplication(QWidget):
         formLayout = QFormLayout()
         formLayout.addRow('Time Gap:', self.time_range_cb)
         formLayout.addRow('Directory Path:', QLineEdit())
-        formLayout.addRow('From Date:', QCalendarWidget())
-        formLayout.addRow('To Date:', QCalendarWidget())
+        formLayout.addRow('Select Car Files:', QLineEdit())
         leftLayout.addLayout(formLayout)
         buttons = QDialogButtonBox()
         buttons.setStandardButtons(
