@@ -203,6 +203,29 @@ class mainApplication(QWidget):
         rightLayout = QVBoxLayout()
         self.topRightBox.setLayout(rightLayout)
 
+    def open_file_dialog_btn_click(self):
+        path = QFileDialog.getExistingDirectory(None, 'Select Directory for files')
+        self.directory_path.setText(path)
+        self.write_to_saved_data(path)
+
+    def open_car_file_dialog_btn_click(self):
+        files = QFileDialog.getOpenFileNames(None, 'Select CAR files', "", "CAR files (*.car *.CAR)")
+        self.car_files = files[0]
+        self.car_files_txt.setText("\n".join([x.split("/")[-1] for x in self.car_files]))
+
+    @staticmethod
+    def read_from_saved_data():
+        data_file = open("saved_data.txt", "r")
+        for x in data_file:
+            if "PATH:" in x:
+                return x.split("PATH:", 1)[1]
+
+    @staticmethod
+    def write_to_saved_data(path):
+        data_file = open("saved_data.txt", "w")
+        data_file.write("PATH:" + path)
+        data_file.close()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
