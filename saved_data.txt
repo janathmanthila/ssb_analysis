@@ -1,1 +1,1 @@
-PATH:E:/Office/ssb_analysis/SQSRM_LOG
+PATH:E:/Personal GIT/ssb_analysis
