@@ -6,8 +6,14 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from datetime import date, datetime, timedelta
 import time, os
 import decimal
+from unipath import Path
+import itertools
+import json
+from io import *
 
 LOG_FILE_PATH = "/logs/"
+CONFIG_FILE_PATH = "/config/"
+
 
 def float_range(start, stop, step):
     while start < stop:
@@ -17,7 +23,7 @@ def float_range(start, stop, step):
 
 class MsgBox(QDialog):
 
-    def __init__(self,  *args, title="", body=""):
+    def __init__(self, *args, title="", body=""):
         super(MsgBox, self).__init__()
 
         self.setWindowTitle(title)
@@ -47,6 +53,7 @@ class mainApplication(QWidget):
         self.car_data = {}
         self.related_logs = []
         self.car_combo_box = None
+        self.loops_available = []
 
         self.layoutMap = {}
         self.buttonMap = {}
@@ -293,30 +300,112 @@ class mainApplication(QWidget):
             # TODO: this is not working
             MsgBox(self, title="Error", body="No car data found")
 
+    def get_points_time(self, car_data, loops):
+        """Calculate In and Out time for each Loop point using Available loop data and Car file data"""
+        points_time = []
+        time_points = len(loops) * 2
+        time_samp = car_data.split(" ")[2]
+        end_dt_object = self.get_time_calculated_from_timestamp(time_samp)
+        start_dt_object = end_dt_object - timedelta(seconds=int(car_data.split(" ")[time_points + 2]))
+        car_data_points = car_data.split(" ")[3:time_points + 3]
+        start_point_time = ''
+        end_point_time = ''
+        end_flag = False
+        initial = 0
+        for loop in loops:
+            for point in range(initial, (initial+2)):
+                if not end_flag:
+                    start_point_time = start_dt_object + timedelta(seconds=int(car_data_points[point]))
+                    end_flag = True
+                else:
+                    end_point_time = start_dt_object + timedelta(seconds=int(car_data_points[point]))
+            points_time.append({loop['loop_id']: {"in_time": start_point_time.time(), "end_time": end_point_time.time()}})
+            end_flag = False
+            initial += 2
+        return points_time
+
     def get_log_files(self, car_id):
         """Find corresponding log files for given car"""
         if car_id == "":
             return
         self.related_logs = []
+        loops_available = self.read_config_file()
         car_data = self.car_data[car_id]
+        points_time = self.get_points_time(car_data, loops_available)
         timestamp = car_data.split(" ")[2]
         dt_object = self.get_time_calculated_from_timestamp(timestamp)
-        print( dt_object)
+        in_dt_object = dt_object - timedelta(seconds=int(car_data.split(" ")[len(loops_available) * 2 + (2)]))
         directory = self.read_from_saved_data() + LOG_FILE_PATH
-        for files in os.walk(directory):
-            for file in files[2]:
-                if ".log" in file:
-                    log_file = open(directory + '/' + file, 'r')
-                    lines = log_file.readlines()
-                    if len(lines) > 0:
-                        start_line_time = datetime.strptime(lines[0].split(": DEBUG")[0], "%Y-%b-%d %H:%M:%S.%f")
-                        end_line_time = datetime.strptime(lines[len(lines)-1].split(": DEBUG")[0], "%Y-%b-%d %H:%M:%S.%f")
-                        if start_line_time <= dt_object <= end_line_time:
-                            self.related_logs.append(directory + '/' + file)
+        try:
+            for files in os.walk(directory):
+                for file in files[2]:
+                    if ".log" in file:
+                        log_file = open(directory + '/' + file, 'r')
+                        lines = log_file.readlines()
+                        if len(lines) > 0:
+                            start_line_time = datetime.strptime(lines[0].split(": DEBUG")[0], "%Y-%b-%d %H:%M:%S.%f")
+                            end_line_time = datetime.strptime(lines[len(lines) - 1].split(": DEBUG")[0],
+                                                              "%Y-%b-%d %H:%M:%S.%f")
+                            if start_line_time <= dt_object <= end_line_time and start_line_time <= in_dt_object <= end_line_time:
+                                self.related_logs.append(directory + file)
+                            elif start_line_time <= dt_object <= end_line_time:
+                                self.related_logs.append(directory + file)
+                            elif start_line_time <= in_dt_object <= end_line_time:
+                                self.related_logs.append(directory + file)
+        except:
+            pass
         if not self.related_logs:
             print("No related log file(s) found")
             # TODO: this is not working
             MsgBox(self, title="Error", body="No related log file(s) found")
+        else:
+            data = ''
+            columns = ["Date", "Time"]
+            if not loops_available == '':
+                for loop_point in loops_available:
+                    columns.append("Actual" + '-' + str(loop_point["loop_id"]))
+                    columns.append(loop_point["point_name"])
+                    columns.append("Ref_Freq" + '-' + str(loop_point["loop_id"]))
+                    columns.append("Arrival_Freq" + '-' + str(loop_point["loop_id"]))
+                    columns.append("Dept_Freq" + '-' + str(loop_point["loop_id"]))
+                    columns.append("Peak_Freq" + '-' + str(loop_point["loop_id"]))
+                    columns.append("Bavg" + '-' + str(loop_point["loop_id"]))
+                    columns.append("Pavg" + '-' + str(loop_point["loop_id"]))
+
+            for related_log_path in self.related_logs:
+                file = open(related_log_path, "rt")
+                data += file.read()
+            for chars in [': DEBUG: summit::ssbdriver::SSBConnector::getSSBData - Loop Data: ', ' - ']:
+                data = data.replace(chars, " ")
+            new_set = pd.read_table(StringIO(data), sep=" ", names=columns, index_col=False)
+            new_set = new_set.dropna(how='any', axis=0)
+            print(new_set)
+
+    def read_config_file(self):
+        """Reads Config file and gets Loop data"""
+        self.loops_available = []
+        current_path = self.read_from_saved_data()
+        prev_dir = Path(current_path).parent
+        file = open(prev_dir + '/configure.cfg', 'r')
+        line_count = 0
+        upper_boundary = []
+        lower_boundary = []
+        string_object = ''
+        for line in file.readlines():
+            line_count += 1
+            if "plcontrol.json" in line:
+                upper_boundary.append(line_count)  # gets the line value which contains plcontrol.json
+            if 'rankdisplay.json' in line:
+                lower_boundary.append(line_count)  # gets the line value which contains rankdisplay.json
+        with open(prev_dir + '/configure.cfg', 'r') as text_file:
+            for line in itertools.islice(text_file, upper_boundary[0], lower_boundary[0]-3):  # reads the lines between
+                # upper and lower boundary
+                string_object += "".join(line.split())
+        json_object = json.loads(string_object)  # converts the string to json object
+        for lop_object in json_object["pointLoopInfo"]:  # checks valid loops and appends to available loop list
+            if not lop_object["point_name"] == '':
+                self.loops_available.append(lop_object)
+        return self.loops_available
 
     def get_time_calculated(self):
         """Gets epoch time with related to given time range"""
