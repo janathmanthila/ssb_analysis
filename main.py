@@ -54,6 +54,9 @@ class mainApplication(QWidget):
         self.related_logs = []
         self.car_combo_box = None
         self.loops_available = []
+        self.dataframe = None
+        self.points_time = None
+        self.final_dataset_car_vs_time = None
 
         self.layoutMap = {}
         self.buttonMap = {}
@@ -302,7 +305,7 @@ class mainApplication(QWidget):
 
     def get_points_time(self, car_data, loops):
         """Calculate In and Out time for each Loop point using Available loop data and Car file data"""
-        points_time = []
+        points_time = {}
         time_points = len(loops) * 2
         time_samp = car_data.split(" ")[2]
         end_dt_object = self.get_time_calculated_from_timestamp(time_samp)
@@ -319,7 +322,7 @@ class mainApplication(QWidget):
                     end_flag = True
                 else:
                     end_point_time = start_dt_object + timedelta(seconds=int(car_data_points[point]))
-            points_time.append({loop['loop_id']: {"in_time": start_point_time.time(), "end_time": end_point_time.time()}})
+            points_time.update({loop['loop_id']: {"in_time": start_point_time.time(), "end_time": end_point_time.time()}})
             end_flag = False
             initial += 2
         return points_time
@@ -331,7 +334,7 @@ class mainApplication(QWidget):
         self.related_logs = []
         loops_available = self.read_config_file()
         car_data = self.car_data[car_id]
-        points_time = self.get_points_time(car_data, loops_available)
+        self.points_time = self.get_points_time(car_data, loops_available)
         timestamp = car_data.split(" ")[2]
         dt_object = self.get_time_calculated_from_timestamp(timestamp)
         in_dt_object = dt_object - timedelta(seconds=int(car_data.split(" ")[len(loops_available) * 2 + (2)]))
@@ -379,6 +382,8 @@ class mainApplication(QWidget):
                 data = data.replace(chars, " ")
             new_set = pd.read_table(StringIO(data), sep=" ", names=columns, index_col=False)
             new_set = new_set.dropna(how='any', axis=0)
+            self.dataframe = new_set
+            self.create_dataset_for_car_vs_time()
             print(new_set)
 
     def read_config_file(self):
@@ -406,6 +411,26 @@ class mainApplication(QWidget):
             if not lop_object["point_name"] == '':
                 self.loops_available.append(lop_object)
         return self.loops_available
+
+    def create_dataset_for_car_vs_time(self):
+        """Generate dataset for car vs time graph"""
+        if not self.points_time:
+            print("Something wrong with point data.")
+            # TODO: this is not working
+            MsgBox(self, title="Error", body="no log data related to points were found")
+            return
+        final_dataset = {}
+        for key, val in self.points_time.items():
+            loopId = key
+            in_time = val["in_time"]
+            end_time = val["end_time"]
+
+            filtered_df = self.dataframe.loc[(pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time >= in_time) & (pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time <= end_time)]
+            final_dataset.update({
+                loopId: filtered_df
+            })
+        self.final_dataset_car_vs_time = final_dataset
+
 
     def get_time_calculated(self):
         """Gets epoch time with related to given time range"""
