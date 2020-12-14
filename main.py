@@ -373,7 +373,7 @@ class mainApplication(QWidget):
             # break
         fig.update_xaxes(type='date', tickmode="linear", dtick=200)
         fig.update_yaxes(tickformat='digits')
-        fig.update_layout(height=1000, width=5000, template='plotly_white')
+        fig.update_layout(height=3000, width=5000, template='plotly_white')
         fig.show()
 
         # layout = plotly.graph_objs.Layout(xaxis={'type': 'date',
