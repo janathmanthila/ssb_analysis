@@ -438,6 +438,7 @@ class mainApplication(QWidget):
         else:
             data = ''
             columns = ["Date", "Time"]
+            dtypes = {'Date': 'str', 'Time': 'str'}
             if not loops_available == '':
                 for loop_point in loops_available:
                     columns.append("Actual" + '-' + str(loop_point["loop_id"]))
@@ -449,15 +450,25 @@ class mainApplication(QWidget):
                     columns.append("Bavg" + '-' + str(loop_point["loop_id"]))
                     columns.append("Pavg" + '-' + str(loop_point["loop_id"]))
 
+                    dtypes.update({"Actual" + '-' + str(loop_point["loop_id"]): 'str'})
+                    dtypes.update({loop_point["point_name"]: 'str'})
+                    dtypes.update({"Ref_Freq" + '-' + str(loop_point["loop_id"]): 'str'})
+                    dtypes.update({"Arrival_Freq" + '-' + str(loop_point["loop_id"]): 'str'})
+                    dtypes.update({"Dept_Freq" + '-' + str(loop_point["loop_id"]): 'str'})
+                    dtypes.update({"Peak_Freq" + '-' + str(loop_point["loop_id"]): 'str'})
+                    dtypes.update({"Bavg" + '-' + str(loop_point["loop_id"]): 'str'})
+                    dtypes.update({"Pavg" + '-' + str(loop_point["loop_id"]): 'str'})
+
+
             for related_log_path in self.related_logs:
                 file = open(related_log_path, "rt")
                 data += file.read()
             for chars in [': DEBUG: summit::ssbdriver::SSBConnector::getSSBData - Loop Data: ', ' - ']:
                 data = data.replace(chars, " ")
-            new_set = pd.read_table(StringIO(data), sep=" ", names=columns, index_col=False)
+            new_set = pd.read_table(StringIO(data), sep=" ", names=columns, dtype=dtypes, index_col=False)
             new_set = new_set.dropna(how='any', axis=0)
             self.dataframe = new_set
-            self.create_dataset_for_car_vs_time()
+            self.create_dataset_for_car_vs_time(new_set)
             self.draw_car_vs_time()
             print(new_set)
 
@@ -487,7 +498,7 @@ class mainApplication(QWidget):
                 self.loops_available.append(lop_object)
         return self.loops_available
 
-    def create_dataset_for_car_vs_time(self):
+    def create_dataset_for_car_vs_time(self, dataset):
         """Generate dataset for car vs time graph"""
         if not self.points_time:
             print("Something wrong with point data.")
@@ -496,15 +507,15 @@ class mainApplication(QWidget):
             return
         final_dataset = {}
         # TODO: Takes too much time
-        # tt = pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time
-        tt = pd.to_datetime(self.dataframe['Time']).dt.time
+        tt = pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time
+        # tt = pd.to_datetime(dataset['Time']).dt.time
 
         for key, val in self.points_time.items():
             loopId = key
             in_time = val["in_time"]
             end_time = val["end_time"]
 
-            filtered_df = self.dataframe.loc[(tt >= in_time) & (tt <= end_time)]
+            filtered_df = dataset.loc[(tt >= in_time) & (tt <= end_time)]
             final_dataset.update({
                 loopId: filtered_df
             })
