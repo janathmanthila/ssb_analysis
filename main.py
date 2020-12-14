@@ -10,8 +10,12 @@ from unipath import Path
 import itertools
 import json
 from io import *
-import plotly.graph_objects as go
-import plotly.express as px
+import plotly
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+
+# Create random data with numpy
+import numpy as np
 
 LOG_FILE_PATH = "/logs/"
 CONFIG_FILE_PATH = "/config/"
@@ -32,7 +36,7 @@ def perdelta(start, end, delta):
 
 def get_second_range(start, end):
     stack = []
-    for result in perdelta(start, end, timedelta(seconds=1)):
+    for result in perdelta(start, end, timedelta(seconds=30)):
         stack.append(result)
     return stack
 
@@ -114,10 +118,6 @@ class mainApplication(QWidget):
         self.setWindowTitle("Title")
         QApplication.setStyle("Fusion")
 
-    #        self.show()
-
-    # LAYOUT RELATED FUNCTIONS
-
     def showdialog(self, title, body):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
@@ -126,7 +126,6 @@ class mainApplication(QWidget):
         msg.setWindowTitle(title)
         msg.setStandardButtons(QMessageBox.Cancel)
         msg.exec_()
-
 
     def bottomLeft(self):
         self.bottomLeftBox = QGroupBox("First Graph")
@@ -297,6 +296,36 @@ class mainApplication(QWidget):
 
     # DRAW GRAPH
     def draw_car_vs_time(self):
+        # N = 100
+        # random_x = np.linspace(0, 1, N)
+        # random_y0 = np.random.randn(N) + 5
+        # random_y1 = np.random.randn(N)
+        # random_y2 = np.random.randn(N) - 5
+        #
+        # # Create traces
+        # trace0 = go.Scatter(
+        #     x=random_x,
+        #     y=random_y0,
+        #     mode='markers',
+        #     name='markers'
+        # )
+        #
+        # trace1 = go.Scatter(
+        #     x=random_x,
+        #     y=random_y1,
+        #     mode='lines+markers',
+        #     name='lines+markers'
+        # )
+        #
+        # trace2 = go.Scatter(
+        #     x=random_x,
+        #     y=random_y2,
+        #     mode='lines',
+        #     name='lines'
+        # )
+        #
+        # data = [trace0, trace1, trace2]
+        # plotly.offline.plot(data, filename='scatter-mode')
         # fig = px.line(df, x="date", y=df.columns,
         #               hover_data={"date": "|%B %d, %Y"},
         #               title='custom tick labels')
@@ -309,33 +338,58 @@ class mainApplication(QWidget):
         fig = go.Figure()
 
         # get min & max
-        val_list =[]
-        date_time_list = []
-        for i in self.final_dataset_car_vs_time:
-            val_list += (self.final_dataset_car_vs_time[i]["Actual-" + str(i)]).astype('int').values.tolist()
-            date_time_list += (pd.to_datetime(self.final_dataset_car_vs_time[i]["Date"] + " " + self.final_dataset_car_vs_time[i]["Time"])).values.tolist()
-
-        val_list = list(str(x) for x in set(val_list))
-        minval = min(val_list)
-        maxval = max(val_list)
+        # val_list = []
+        # date_time_list = []
+        # for i in self.final_dataset_car_vs_time:
+        #     val_list += (self.final_dataset_car_vs_time[i]["Actual-" + str(i)]).astype('int').values.tolist()
+        #     date_time_list += (pd.to_datetime(
+        #         self.final_dataset_car_vs_time[i]["Date"] + " " + self.final_dataset_car_vs_time[i][
+        #             "Time"])).values.tolist()
+        #
+        # val_list = list(str(x) for x in set(val_list))
+        # minval = min(val_list)
+        # maxval = max(val_list)
 
         # for i in self.final_dataset_car_vs_time:
-        temp_df = pd.DataFrame()
-        temp_df['Datetime']= pd.to_datetime(self.final_dataset_car_vs_time[1]["Date"] + " "+  self.final_dataset_car_vs_time[1]["Time"])
-        # temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)]
-        temp_df["Actual-" + str(1)] = self.final_dataset_car_vs_time[1]["Actual-" + str(1)]
-        temp_df.sort_values(by=["Actual-" + str(1)]).reset_index(drop=True)
+        # temp_df = pd.DataFrame()
+        # temp_df['Datetime']= pd.to_datetime(self.final_dataset_car_vs_time[1]["Date"] + " "+  self.final_dataset_car_vs_time[1]["Time"])
+        # # temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)]
+        # temp_df["Actual-" + str(1)] = self.final_dataset_car_vs_time[1]["Actual-" + str(1)]
+        # temp_df.sort_values(by=["Actual-" + str(1)]).reset_index(drop=True)
+        traces = []
+        fig = make_subplots(len(self.final_dataset_car_vs_time), 1)
+        for i in self.final_dataset_car_vs_time:
+            # i = 1
+            temp_df = pd.DataFrame()
+            temp_df['Datetime'] = pd.to_datetime(
+                self.final_dataset_car_vs_time[i]["Date"] + " " + self.final_dataset_car_vs_time[i]["Time"])
+            # temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)]
+            temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)].astype('str')
 
-        fig.add_trace(go.Scatter(x=temp_df['Datetime'], y=temp_df["Actual-" + str(1)], name=1, line_shape='linear'))
-
-
-        # fig.update_yaxes(tickvals=val_list)
-        # fig.update_yaxes(tick0=minval, dtick=1, range=[minval, maxval])
-        fig.update_layout(
-                          title_text="Manually Set Date Range")
+            fig.add_trace(go.Scatter(y=temp_df["Actual-" + str(i)],
+                                     x=temp_df['Datetime'],
+                                     name=i), i+1, 1)
+            # plotly.graph_objs.Scatter(x=temp_df['Datetime'], y=temp_df["Actual-" + str(i)])
+            # break
+        fig.update_xaxes(type='date', tickmode="linear", dtick=200)
+        fig.update_yaxes(tickformat='digits')
+        fig.update_layout(height=1000, width=1000, template='plotly_white')
         fig.show()
 
+        # layout = plotly.graph_objs.Layout(xaxis={'type': 'date',
+        #                                          'tickmode': 'linear',
+        #                                          'dtick': 200}, yaxis={'tickformat': "digits"})
+        # fig = plotly.graph_objs.Figure(data=traces, layout=layout)
+        # print(traces)
+        # fig.update_yaxes(tick0=minval, dtick=1, range=[minval, maxval])
+        # plotly.offline.plot(fig, filename='scatter-mode')
+        # fig.add_trace(go.Scatter(x=date_time_list, y=temp_df["Actual-" + str(1)], name=1, line_shape='linear'))
 
+        # fig.update_yaxes(tickvals=val_list)
+
+        # fig.update_layout(
+        #     title_text="Manually Set Date Range")
+        # fig.show()
 
     # DRAW GRAPH :: END
 
@@ -388,13 +442,14 @@ class mainApplication(QWidget):
         end_flag = False
         initial = 0
         for loop in loops:
-            for point in range(initial, (initial+2)):
+            for point in range(initial, (initial + 2)):
                 if not end_flag:
                     start_point_time = start_dt_object + timedelta(seconds=int(car_data_points[point]))
                     end_flag = True
                 else:
                     end_point_time = start_dt_object + timedelta(seconds=int(car_data_points[point]))
-            points_time.update({loop['loop_id']: {"in_time": start_point_time.time(), "end_time": end_point_time.time()}})
+            points_time.update(
+                {loop['loop_id']: {"in_time": start_point_time.time(), "end_time": end_point_time.time()}})
             end_flag = False
             initial += 2
         return points_time
@@ -459,7 +514,6 @@ class mainApplication(QWidget):
                     dtypes.update({"Bavg" + '-' + str(loop_point["loop_id"]): 'str'})
                     dtypes.update({"Pavg" + '-' + str(loop_point["loop_id"]): 'str'})
 
-
             for related_log_path in self.related_logs:
                 file = open(related_log_path, "rt")
                 data += file.read()
@@ -489,7 +543,8 @@ class mainApplication(QWidget):
             if 'rankdisplay.json' in line:
                 lower_boundary.append(line_count)  # gets the line value which contains rankdisplay.json
         with open(prev_dir + '/configure.cfg', 'r') as text_file:
-            for line in itertools.islice(text_file, upper_boundary[0], lower_boundary[0]-3):  # reads the lines between
+            for line in itertools.islice(text_file, upper_boundary[0],
+                                         lower_boundary[0] - 3):  # reads the lines between
                 # upper and lower boundary
                 string_object += "".join(line.split())
         json_object = json.loads(string_object)  # converts the string to json object
@@ -520,7 +575,6 @@ class mainApplication(QWidget):
                 loopId: filtered_df
             })
         self.final_dataset_car_vs_time = final_dataset
-
 
     def get_time_calculated(self):
         """Gets epoch time with related to given time range"""

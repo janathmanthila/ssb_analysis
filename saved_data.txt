@@ -1,1 +1,1 @@
-PATH:E:/Office/ssb_analysis/SQSRM_LOG
+PATH:D:/SSB Analysis Tool/ssb_analysis
