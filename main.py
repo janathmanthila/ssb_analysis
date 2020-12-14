@@ -100,6 +100,16 @@ class mainApplication(QWidget):
 
     # LAYOUT RELATED FUNCTIONS
 
+    def showdialog(self, title, body):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+
+        msg.setText(body)
+        msg.setWindowTitle(title)
+        msg.setStandardButtons(QMessageBox.Cancel)
+        msg.exec_()
+
+
     def bottomLeft(self):
         self.bottomLeftBox = QGroupBox("First Graph")
 
@@ -301,7 +311,7 @@ class mainApplication(QWidget):
         if not self.car_data:
             print("No car data found")
             # TODO: this is not working
-            MsgBox(self, title="Error", body="No car data found")
+            self.showdialog(title="Error", body="No car data found")
 
     def get_points_time(self, car_data, loops):
         """Calculate In and Out time for each Loop point using Available loop data and Car file data"""
@@ -360,7 +370,7 @@ class mainApplication(QWidget):
         if not self.related_logs:
             print("No related log file(s) found")
             # TODO: this is not working
-            MsgBox(self, title="Error", body="No related log file(s) found")
+            self.showdialog(title="Error", body="No related log file(s) found")
         else:
             data = ''
             columns = ["Date", "Time"]
@@ -417,7 +427,7 @@ class mainApplication(QWidget):
         if not self.points_time:
             print("Something wrong with point data.")
             # TODO: this is not working
-            MsgBox(self, title="Error", body="no log data related to points were found")
+            self.showdialog(title="Error", body="no log data related to points were found")
             return
         final_dataset = {}
         for key, val in self.points_time.items():
