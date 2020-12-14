@@ -10,6 +10,8 @@ from unipath import Path
 import itertools
 import json
 from io import *
+import plotly.graph_objects as go
+import plotly.express as px
 
 LOG_FILE_PATH = "/logs/"
 CONFIG_FILE_PATH = "/config/"
@@ -19,6 +21,20 @@ def float_range(start, stop, step):
     while start < stop:
         yield float(start)
         start += decimal.Decimal(step)
+
+
+def perdelta(start, end, delta):
+    curr = start
+    while curr <= end:
+        yield curr
+        curr += delta
+
+
+def get_second_range(start, end):
+    stack = []
+    for result in perdelta(start, end, timedelta(seconds=1)):
+        stack.append(result)
+    return stack
 
 
 class MsgBox(QDialog):
@@ -57,6 +73,8 @@ class mainApplication(QWidget):
         self.dataframe = None
         self.points_time = None
         self.final_dataset_car_vs_time = None
+        self.car_in_time = False
+        self.car_out_time = False
 
         self.layoutMap = {}
         self.buttonMap = {}
@@ -277,6 +295,50 @@ class mainApplication(QWidget):
 
     # LAYOUT RELATED FUNCTIONS :: END
 
+    # DRAW GRAPH
+    def draw_car_vs_time(self):
+        # fig = px.line(df, x="date", y=df.columns,
+        #               hover_data={"date": "|%B %d, %Y"},
+        #               title='custom tick labels')
+        # fig.update_xaxes(
+        #     dtick="M1",
+        #     tickformat="%b\n%Y")
+        # fig.show()
+
+        # plot the data
+        fig = go.Figure()
+
+        # get min & max
+        val_list =[]
+        date_time_list = []
+        for i in self.final_dataset_car_vs_time:
+            val_list += (self.final_dataset_car_vs_time[i]["Actual-" + str(i)]).astype('int').values.tolist()
+            date_time_list += (pd.to_datetime(self.final_dataset_car_vs_time[i]["Date"] + " " + self.final_dataset_car_vs_time[i]["Time"])).values.tolist()
+
+        val_list = list(str(x) for x in set(val_list))
+        minval = min(val_list)
+        maxval = max(val_list)
+
+        # for i in self.final_dataset_car_vs_time:
+        temp_df = pd.DataFrame()
+        temp_df['Datetime']= pd.to_datetime(self.final_dataset_car_vs_time[1]["Date"] + " "+  self.final_dataset_car_vs_time[1]["Time"])
+        # temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)]
+        temp_df["Actual-" + str(1)] = self.final_dataset_car_vs_time[1]["Actual-" + str(1)]
+        temp_df.sort_values(by=["Actual-" + str(1)]).reset_index(drop=True)
+
+        fig.add_trace(go.Scatter(x=temp_df['Datetime'], y=temp_df["Actual-" + str(1)], name=1, line_shape='linear'))
+
+
+        # fig.update_yaxes(tickvals=val_list)
+        # fig.update_yaxes(tick0=minval, dtick=1, range=[minval, maxval])
+        fig.update_layout(
+                          title_text="Manually Set Date Range")
+        fig.show()
+
+
+
+    # DRAW GRAPH :: END
+
     # ANALYSIS RELATED FUNCTIONS
 
     def clear_data(self):
@@ -347,7 +409,9 @@ class mainApplication(QWidget):
         self.points_time = self.get_points_time(car_data, loops_available)
         timestamp = car_data.split(" ")[2]
         dt_object = self.get_time_calculated_from_timestamp(timestamp)
+        self.car_out_time = dt_object
         in_dt_object = dt_object - timedelta(seconds=int(car_data.split(" ")[len(loops_available) * 2 + (2)]))
+        self.car_in_time = in_dt_object
         directory = self.read_from_saved_data() + LOG_FILE_PATH
         try:
             for files in os.walk(directory):
@@ -394,6 +458,7 @@ class mainApplication(QWidget):
             new_set = new_set.dropna(how='any', axis=0)
             self.dataframe = new_set
             self.create_dataset_for_car_vs_time()
+            self.draw_car_vs_time()
             print(new_set)
 
     def read_config_file(self):
@@ -430,12 +495,16 @@ class mainApplication(QWidget):
             self.showdialog(title="Error", body="no log data related to points were found")
             return
         final_dataset = {}
+        # TODO: Takes too much time
+        # tt = pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time
+        tt = pd.to_datetime(self.dataframe['Time']).dt.time
+
         for key, val in self.points_time.items():
             loopId = key
             in_time = val["in_time"]
             end_time = val["end_time"]
 
-            filtered_df = self.dataframe.loc[(pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time >= in_time) & (pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time <= end_time)]
+            filtered_df = self.dataframe.loc[(tt >= in_time) & (tt <= end_time)]
             final_dataset.update({
                 loopId: filtered_df
             })
