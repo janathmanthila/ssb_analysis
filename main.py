@@ -9,13 +9,11 @@ import decimal
 from unipath import Path
 import itertools
 import json
+import glob
 from io import *
-import plotly
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
-# Create random data with numpy
-import numpy as np
 
 LOG_FILE_PATH = "/logs/"
 CONFIG_FILE_PATH = "/config/"
@@ -271,9 +269,7 @@ class mainApplication(QWidget):
         formLayout.addRow('Select Car Files:', self.open_car_file_dialog_btn)
         leftLayout.addLayout(formLayout)
         buttons = QDialogButtonBox()
-        buttons.setStandardButtons(
-            QDialogButtonBox.Cancel | QDialogButtonBox.Apply)
-        # TODO: accepted not working. had to go with clicked. but work in both buttons. need to check
+        buttons.setStandardButtons(QDialogButtonBox.Apply)
         buttons.clicked.connect(self.initiate_analysis)
         leftLayout.addWidget(buttons)
         self.topLeftBox.setLayout(leftLayout)
@@ -296,100 +292,21 @@ class mainApplication(QWidget):
 
     # DRAW GRAPH
     def draw_car_vs_time(self):
-        # N = 100
-        # random_x = np.linspace(0, 1, N)
-        # random_y0 = np.random.randn(N) + 5
-        # random_y1 = np.random.randn(N)
-        # random_y2 = np.random.randn(N) - 5
-        #
-        # # Create traces
-        # trace0 = go.Scatter(
-        #     x=random_x,
-        #     y=random_y0,
-        #     mode='markers',
-        #     name='markers'
-        # )
-        #
-        # trace1 = go.Scatter(
-        #     x=random_x,
-        #     y=random_y1,
-        #     mode='lines+markers',
-        #     name='lines+markers'
-        # )
-        #
-        # trace2 = go.Scatter(
-        #     x=random_x,
-        #     y=random_y2,
-        #     mode='lines',
-        #     name='lines'
-        # )
-        #
-        # data = [trace0, trace1, trace2]
-        # plotly.offline.plot(data, filename='scatter-mode')
-        # fig = px.line(df, x="date", y=df.columns,
-        #               hover_data={"date": "|%B %d, %Y"},
-        #               title='custom tick labels')
-        # fig.update_xaxes(
-        #     dtick="M1",
-        #     tickformat="%b\n%Y")
-        # fig.show()
-
-        # plot the data
-        fig = go.Figure()
-
-        # get min & max
-        # val_list = []
-        # date_time_list = []
-        # for i in self.final_dataset_car_vs_time:
-        #     val_list += (self.final_dataset_car_vs_time[i]["Actual-" + str(i)]).astype('int').values.tolist()
-        #     date_time_list += (pd.to_datetime(
-        #         self.final_dataset_car_vs_time[i]["Date"] + " " + self.final_dataset_car_vs_time[i][
-        #             "Time"])).values.tolist()
-        #
-        # val_list = list(str(x) for x in set(val_list))
-        # minval = min(val_list)
-        # maxval = max(val_list)
-
-        # for i in self.final_dataset_car_vs_time:
-        # temp_df = pd.DataFrame()
-        # temp_df['Datetime']= pd.to_datetime(self.final_dataset_car_vs_time[1]["Date"] + " "+  self.final_dataset_car_vs_time[1]["Time"])
-        # # temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)]
-        # temp_df["Actual-" + str(1)] = self.final_dataset_car_vs_time[1]["Actual-" + str(1)]
-        # temp_df.sort_values(by=["Actual-" + str(1)]).reset_index(drop=True)
-        traces = []
-        fig = make_subplots(len(self.final_dataset_car_vs_time), 1)
+        fig = make_subplots(len(self.final_dataset_car_vs_time), 1, subplot_titles=[x["point_name"].replace("_", " ") for x in self.loops_available])
         for i in self.final_dataset_car_vs_time:
-            # i = 1
             temp_df = pd.DataFrame()
             temp_df['Datetime'] = pd.to_datetime(
                 self.final_dataset_car_vs_time[i]["Date"] + " " + self.final_dataset_car_vs_time[i]["Time"])
-            # temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)]
             temp_df["Actual-" + str(i)] = self.final_dataset_car_vs_time[i]["Actual-" + str(i)].astype('str')
 
             fig.add_trace(go.Scatter(y=temp_df["Actual-" + str(i)],
                                      x=temp_df['Datetime'],
                                      name=i), i+1, 1)
-            # plotly.graph_objs.Scatter(x=temp_df['Datetime'], y=temp_df["Actual-" + str(i)])
-            # break
-        fig.update_xaxes(type='date', tickmode="linear", dtick=200)
-        fig.update_yaxes(tickformat='digits')
-        fig.update_layout(height=3000, width=5000, template='plotly_white')
+
+        fig.update_xaxes(type='date', tickmode="linear", dtick=200, showgrid=False,rangeslider=dict(visible=True), rangeslider_thickness = 0.03)
+        fig.update_yaxes(tickformat='digits', showgrid=False)
+        fig.update_layout(height=3000, template='plotly',showlegend=False, title="Car vs Time - " + self.car_combo_box.currentText())
         fig.show()
-
-        # layout = plotly.graph_objs.Layout(xaxis={'type': 'date',
-        #                                          'tickmode': 'linear',
-        #                                          'dtick': 200}, yaxis={'tickformat': "digits"})
-        # fig = plotly.graph_objs.Figure(data=traces, layout=layout)
-        # print(traces)
-        # fig.update_yaxes(tick0=minval, dtick=1, range=[minval, maxval])
-        # plotly.offline.plot(fig, filename='scatter-mode')
-        # fig.add_trace(go.Scatter(x=date_time_list, y=temp_df["Actual-" + str(1)], name=1, line_shape='linear'))
-
-        # fig.update_yaxes(tickvals=val_list)
-
-        # fig.update_layout(
-        #     title_text="Manually Set Date Range")
-        # fig.show()
 
     # DRAW GRAPH :: END
 
@@ -407,9 +324,9 @@ class mainApplication(QWidget):
         print(self.car_files)
         print(self.time_range_cb.currentText())
         print(self.get_time_calculated())
-        # self.read_files()
         self.get_car_data()
         # update car combo box
+        self.car_combo_box.clear()
         self.car_combo_box.addItems([""])
         self.car_combo_box.addItems([key for key, value in self.car_data.items()])
         self.car_combo_box.update()
@@ -426,7 +343,6 @@ class mainApplication(QWidget):
                     })
         if not self.car_data:
             print("No car data found")
-            # TODO: this is not working
             self.showdialog(title="Error", body="No car data found")
 
     def get_points_time(self, car_data, loops):
@@ -456,6 +372,7 @@ class mainApplication(QWidget):
 
     def get_log_files(self, car_id):
         """Find corresponding log files for given car"""
+        # startTime = time.time()
         if car_id == "":
             return
         self.related_logs = []
@@ -486,9 +403,48 @@ class mainApplication(QWidget):
                                 self.related_logs.append(directory + file)
         except:
             pass
+
+        # log_file_df = pd.DataFrame()
+        # try:
+        #     for files in os.walk(directory):
+        #         for file in files[2]:
+        #             if ".log" in file:
+        #                 with open(directory + '/' + file, 'r') as content:
+        #                     df = content.read()
+
+
+        # # log_file = open(directory + '/' + file, 'r')
+        # lines = log_file.readlines()
+        # if len(lines) > 0:
+        #     start_line_time = datetime.strptime(lines[0].split(": DEBUG")[0], "%Y-%b-%d %H:%M:%S.%f")
+        #     end_line_time = datetime.strptime(lines[len(lines) - 1].split(": DEBUG")[0],
+        #                                       "%Y-%b-%d %H:%M:%S.%f")
+        #     if start_line_time <= dt_object <= end_line_time and start_line_time <= in_dt_object <= end_line_time:
+        #         self.related_logs.append(directory + file)
+        #     elif start_line_time <= dt_object <= end_line_time:
+        #         self.related_logs.append(directory + file)
+        #     elif start_line_time <= in_dt_object <= end_line_time:
+        #         self.related_logs.append(directory + file)
+        # except:
+        #     pass
+
+        # # path = r'C:\DRO\DCL_rawdata_files'  # use your path
+        # all_files = [x.replace("\\", "/") for x in glob.glob(os.path.join(directory) + "*.log*")]
+        #
+        # li = []
+        #
+        # df = pd.DataFrame()
+        # for filename in all_files:
+        #     # df = pd.read_table(filename,iterator=True, index_col=None, header=0)
+        #     # li.append(df)
+        #     for chunk in pd.read_table(filename, header=None,  chunksize=1000):
+        #         df = pd.concat([df, chunk], ignore_index=True)
+        # frame = pd.concat(li)
+        # print(frame)
+        # print(time.time() - startTime)
+
         if not self.related_logs:
             print("No related log file(s) found")
-            # TODO: this is not working
             self.showdialog(title="Error", body="No related log file(s) found")
         else:
             data = ''
@@ -557,13 +513,11 @@ class mainApplication(QWidget):
         """Generate dataset for car vs time graph"""
         if not self.points_time:
             print("Something wrong with point data.")
-            # TODO: this is not working
             self.showdialog(title="Error", body="no log data related to points were found")
             return
         final_dataset = {}
-        # TODO: Takes too much time
-        tt = pd.to_datetime(self.dataframe['Time'], format='%H:%M:%S.%f').dt.time
-        # tt = pd.to_datetime(dataset['Time']).dt.time
+        time_col = self.dataframe['Time'].transform(lambda x: x + ".000000" if len(x.split(".")) <= 1 else x)
+        tt = pd.to_datetime(time_col, format='%H:%M:%S.%f').dt.time
 
         for key, val in self.points_time.items():
             loopId = key
@@ -599,8 +553,9 @@ class mainApplication(QWidget):
 
     def open_file_dialog_btn_click(self):
         path = QFileDialog.getExistingDirectory(None, 'Select Directory for files')
-        self.directory_path.setText(path)
-        self.write_to_saved_data(path)
+        if path:
+            self.directory_path.setText(path)
+            self.write_to_saved_data(path)
 
     def open_car_file_dialog_btn_click(self):
         files = QFileDialog.getOpenFileNames(None, 'Select CAR files', "", "CAR files (*.car *.CAR)")
